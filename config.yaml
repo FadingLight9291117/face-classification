@@ -1,0 +1,6 @@
+imgP_dir: ''
+imgN_dir: ''
+
+epochs: 500
+batch_size: 64
+num_worker: 8
