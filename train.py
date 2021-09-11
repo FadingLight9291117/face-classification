@@ -106,7 +106,7 @@ def eval(dataloader, model: FaceClassifier, device):
 
     metrics = metrics_fn(preds, targs)
     info = {
-        'loss': float(f'{float(loss.cpu().numpy()):.3f}'),
+        'average loss': float(f'{float(loss.cpu().numpy()) / len(dataloader):.3f}'),
         'average time': float(f'{timer.average_time():.3f}'),
         'metrics': metrics,
     }
@@ -133,8 +133,10 @@ if __name__ == '__main__':
     config_path = opt.config_path
     config = get_config(config_path)
 
-    train_dir, test_dir, P, N, save_path, img_size, epochs, batch_size, num_workers, device, debug = \
-        config.train_dir, config.test_dir, config.P, config.N, config.save_path, config.img_size, config.epochs, config.batch_size, config.num_workers, config.device, config.DEBUG
+    (train_dir, test_dir, P, N, save_path, img_size,
+     epochs, batch_size, num_workers, device, debug) = \
+        (config.train_dir, config.test_dir, config.P, config.N, config.save_path, config.img_size,
+         config.epochs, config.batch_size, config.num_workers, config.device, config.DEBUG)
 
     train_p = Path(train_dir).joinpath(P).as_posix()
     train_n = Path(train_dir).joinpath(N).as_posix()
@@ -172,4 +174,4 @@ if __name__ == '__main__':
 
     model = FaceClassifier()
     model.load_state_dict(torch.load('./models/model_FINAL.pth'))
-    eval(train_dataloader, model, device=device)
+    eval(test_dataloader, model, device=device)
