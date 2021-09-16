@@ -26,30 +26,39 @@ def metrics_fn(preds, targs):
     acc = accuracy_score(targs, preds)
     prec = precision_score(targs, preds)
     recall = recall_score(targs, preds)
-    result = {
+    metrics = {
         'acc': float(f'{acc:.3f}'),
         'prec': float(f'{prec:.3f}'),
         'recall': float(f'{recall:.3f}'),
     }
-    return result
+    return metrics
 
 
-def train(dataloader, save_path, epochs, device
-          ):
+def train(train_dataloader,
+          eval_dataloader,
+          save_path,
+          epochs,
+          device):
+    # result save path
     save_path = Path(save_path)
-    # net
-    net = FaceClassifier(pretrained=True).to(device)
-    # logger.debug(net)
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(net.parameters())
+    model_save_dir = save_path / 'models'
+    log_path = ''
 
-    # start train
-    net.train()
+    # get model
+    model = FaceClassifier(pretrained=True).to(device)
+    # logger.debug(net)
+
+    # some fn
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters())
+
+    # start train ==============================================================
+    model.train()
     for epoch in range(epochs):
-        for batch, (images, targs) in enumerate(dataloader):
+        for batch, (images, targs) in enumerate(train_dataloader):
             images = images.to(device)
             targs = targs.to(device)
-            preds = net(images)
+            preds = model(images)
             loss = loss_fn(preds, targs.long())
 
             optimizer.zero_grad()
@@ -63,28 +72,35 @@ def train(dataloader, save_path, epochs, device
 
             log = {
                 'epochs': f'{epoch:>3}/{epochs - 1}',
-                'step': f'{batch:>3}/{len(dataloader) - 1}',
+                'step': f'{batch:>3}/{len(train_dataloader) - 1}',
                 'loss': f'{loss:>7f}',
                 'metrics': metrics,
             }
             logger.debug(log)
 
+        # eval begin ====================================================
         if epoch % 10 == 0:
             # eval model
+            eval(eval_dataloader, model, device)
             # save model
-            torch.save(net.state_dict(),
-                       (save_path / f'model_{epoch}.pth').as_posix())
+            torch.save(model.state_dict(),
+                       (model_save_path / f'model_{epoch}.pth').as_posix())
+        # eval end ======================================================
+    # eval end ====================================================================
+
     # save final model
-    torch.save(net.state_dict(),
-               (save_path / 'model_FINAL.pth').as_posix())
+    torch.save(model.state_dict(),
+               (model_save_path / 'model_FINAL.pth').as_posix())
 
 
 @torch.no_grad()
 def eval(dataloader, model: FaceClassifier, device):
+    timer = Timer()
+
     model.eval()
     model.to(device)
-    timer = Timer()
     loss_fn = nn.CrossEntropyLoss()
+
     loss = torch.zeros(1, device=device)
     metrics = []
     preds = []
@@ -94,23 +110,27 @@ def eval(dataloader, model: FaceClassifier, device):
         targ = targ.to(device)
         with timer:
             pred = model(image)
+
         preds.append(pred.cpu().numpy())
         targs.append(targ.cpu().numpy())
         # compute loss
         loss += loss_fn(pred, targ.long())
+        # metrics
         metric = metrics_fn(pred.cpu().numpy(), targ.cpu().numpy())
         metrics.append(metric)
         logger.debug(metric)
     preds = np.concatenate(preds, axis=0)
     targs = np.concatenate(targs, axis=0)
 
+    # log
+    loss = loss.cpu().numpy()
     metrics = metrics_fn(preds, targs)
     info = {
-        'average loss': float(f'{float(loss.cpu().numpy()) / len(dataloader):.3f}'),
-        'average time': float(f'{timer.average_time():.3f}'),
+        'loss': float(f'{float(loss) / len(dataloader):.3f}'),
+        'time': float(f'{timer.average_time():.3f}'),
         'metrics': metrics,
     }
-    pprint(info)
+    return info
 
 
 def get_config(config_path):
@@ -138,6 +158,7 @@ if __name__ == '__main__':
         (config.train_dir, config.test_dir, config.P, config.N, config.save_path, config.img_size,
          config.epochs, config.batch_size, config.num_workers, config.device, config.DEBUG)
 
+    # data path
     train_p = Path(train_dir).joinpath(P).as_posix()
     train_n = Path(train_dir).joinpath(N).as_posix()
     test_p = Path(test_dir).joinpath(P).as_posix()
@@ -148,6 +169,7 @@ if __name__ == '__main__':
     if debug:
         logging.basicConfig(level=logging.DEBUG)
 
+    # transform
     transform = transforms.Compose([
         transforms.Resize(img_size),
         transforms.Lambda(lambda t: torch.FloatTensor(t.numpy()))
@@ -157,21 +179,18 @@ if __name__ == '__main__':
     # transforms.ToTensor(),
     # ])
 
-    train_dataset = ImageDataDataset(imgP_dir=train_p, imgN_dir=train_n,
-                                     transform=transform, target_transform=target_transform)
-    test_dataset = ImageDataDataset(imgP_dir=test_p, imgN_dir=test_n,
+    eval_dataset = ImageDataDataset(imgP_dir=train_p, imgN_dir=train_n,
+                                    transform=transform, target_transform=target_transform)
+    eval_dataset = ImageDataDataset(imgP_dir=test_p, imgN_dir=test_n,
                                     transform=transform, target_transform=target_transform)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size,
+    train_dataloader = DataLoader(eval_dataset, batch_size=batch_size,
                                   shuffle=True, num_workers=num_workers)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size,
+    eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size,
                                  shuffle=True, num_workers=num_workers)
 
-    # train(dataloader=train_dataloader,
-    #       save_path=save_path.as_posix(),
-    #       epochs=100,
-    #       device=device)
-
-    model = FaceClassifier()
-    model.load_state_dict(torch.load('./models/model_FINAL.pth'))
-    eval(test_dataloader, model, device=device)
+    train(dataloader=train_dataloader,
+          eval_dataloader=eval_dataloader,
+          save_path=save_path.as_posix(),
+          epochs=epochs,
+          device=device)

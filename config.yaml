@@ -2,7 +2,7 @@ train_dir: dataset/train
 test_dir: dataset/test
 P: p
 N: n
-save_path: models
+save_path: result
 
 img_size: [ 300, 300 ]
 epochs: 500
