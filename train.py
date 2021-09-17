@@ -18,8 +18,6 @@ from dataset import ImageDataDataset
 from utils.timeUtils import Timer
 from utils.jsonUtils import pprint
 
-logger = logging.getLogger(__name__)
-
 
 def metrics_fn(preds, targs):
     preds = preds.argmax(axis=1)
@@ -42,19 +40,19 @@ def train(train_dataloader,
     # result save path
     save_path = Path(save_path)
     model_save_dir = save_path / 'models'
-    log_path = ''
+    model_save_dir.mkdir(exist_ok=True)
 
     # get model
     model = FaceClassifier(pretrained=True).to(device)
-    # logger.debug(net)
+    logging.info(model)
 
     # some fn
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters())
 
     # start train ==============================================================
-    model.train()
     for epoch in range(epochs):
+        model.train()
         for batch, (images, targs) in enumerate(train_dataloader):
             images = images.to(device)
             targs = targs.to(device)
@@ -70,34 +68,39 @@ def train(train_dataloader,
             metrics = metrics_fn(preds.cpu().detach().numpy(),
                                  targs.cpu().detach().numpy())
 
-            log = {
+            train_log = {
                 'epochs': f'{epoch:>3}/{epochs - 1}',
                 'step': f'{batch:>3}/{len(train_dataloader) - 1}',
                 'loss': f'{loss:>7f}',
                 'metrics': metrics,
             }
-            logger.debug(log)
+            logging.info(f'train: {train_log}')
 
         # eval begin ====================================================
         if epoch % 10 == 0:
             # eval model
-            eval(eval_dataloader, model, device)
+            model.eval()
+            eval_log = {
+                'epochs': f'{epoch:>3}/{epochs - 1}',
+            }
+            info = eval(eval_dataloader, model, device)
+            eval_log.update(info)
+            logging.info(f' eval: {eval_log}')
             # save model
             torch.save(model.state_dict(),
-                       (model_save_path / f'model_{epoch}.pth').as_posix())
+                       (model_save_dir / f'model_{epoch}.pth').as_posix())
         # eval end ======================================================
-    # eval end ====================================================================
+    # train end ====================================================================
 
     # save final model
     torch.save(model.state_dict(),
-               (model_save_path / 'model_FINAL.pth').as_posix())
+               (model_save_dir / 'model_FINAL.pth').as_posix())
 
 
 @torch.no_grad()
 def eval(dataloader, model: FaceClassifier, device):
     timer = Timer()
 
-    model.eval()
     model.to(device)
     loss_fn = nn.CrossEntropyLoss()
 
@@ -118,7 +121,6 @@ def eval(dataloader, model: FaceClassifier, device):
         # metrics
         metric = metrics_fn(pred.cpu().numpy(), targ.cpu().numpy())
         metrics.append(metric)
-        logger.debug(metric)
     preds = np.concatenate(preds, axis=0)
     targs = np.concatenate(targs, axis=0)
 
@@ -126,9 +128,9 @@ def eval(dataloader, model: FaceClassifier, device):
     loss = loss.cpu().numpy()
     metrics = metrics_fn(preds, targs)
     info = {
-        'loss': float(f'{float(loss) / len(dataloader):.3f}'),
-        'time': float(f'{timer.average_time():.3f}'),
+        'loss': f'{float(loss) / len(dataloader):>7f}',
         'metrics': metrics,
+        'time': f'{timer.average_time():.3f}',
     }
     return info
 
@@ -149,12 +151,13 @@ def get_opt():
 
 
 if __name__ == '__main__':
+    # get config
     opt = get_opt()
     config_path = opt.config_path
     config = get_config(config_path)
 
     (train_dir, test_dir, P, N, save_path, img_size,
-     epochs, batch_size, num_workers, device, debug) = \
+     epochs, batch_size, num_workers, device, info) = \
         (config.train_dir, config.test_dir, config.P, config.N, config.save_path, config.img_size,
          config.epochs, config.batch_size, config.num_workers, config.device, config.DEBUG)
 
@@ -166,8 +169,13 @@ if __name__ == '__main__':
     save_path = Path(save_path)
     save_path.mkdir(exist_ok=True)
     device = 'cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu'
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
+
+    # set logging
+    log_path = save_path / 'log.log'
+    logging.basicConfig(level=logging.INFO,
+                        filename=log_path.as_posix(),
+                        format='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s'
+                        )
 
     # transform
     transform = transforms.Compose([
@@ -189,7 +197,7 @@ if __name__ == '__main__':
     eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size,
                                  shuffle=True, num_workers=num_workers)
 
-    train(dataloader=train_dataloader,
+    train(train_dataloader=train_dataloader,
           eval_dataloader=eval_dataloader,
           save_path=save_path.as_posix(),
           epochs=epochs,

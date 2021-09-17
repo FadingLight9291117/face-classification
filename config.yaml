@@ -5,8 +5,8 @@ N: n
 save_path: result
 
 img_size: [ 300, 300 ]
-epochs: 500
-batch_size: 32
+epochs: 1000
+batch_size: 64
 num_workers: 8
 device: gpu
 
