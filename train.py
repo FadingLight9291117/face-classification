@@ -158,9 +158,9 @@ if __name__ == '__main__':
     config = get_config(config_path)
 
     (train_dir, test_dir, P, N, save_path, img_size,
-     epochs, batch_size, num_workers, device, info) = \
+     epochs, batch_size, num_workers, device, debug, model_name) = \
         (config.train_dir, config.test_dir, config.P, config.N, config.save_path, config.img_size,
-         config.epochs, config.batch_size, config.num_workers, config.device, config.DEBUG)
+         config.epochs, config.batch_size, config.num_workers, config.device, config.DEBUG, config.model_name)
 
     # data path
     train_p = Path(train_dir).joinpath(P).as_posix()
@@ -200,7 +200,7 @@ if __name__ == '__main__':
 
     train(train_dataloader=train_dataloader,
           eval_dataloader=eval_dataloader,
-          model_name='resnet50',
+          model_name=model_name,
           save_path=save_path.as_posix(),
           epochs=epochs,
           device=device)
