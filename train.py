@@ -34,6 +34,7 @@ def metrics_fn(preds, targs):
 
 def train(train_dataloader,
           eval_dataloader,
+          model_name,
           save_path,
           epochs,
           device):
@@ -43,7 +44,7 @@ def train(train_dataloader,
     model_save_dir.mkdir(exist_ok=True)
 
     # get model
-    model = FaceClassifier(pretrained=True).to(device)
+    model = FaceClassifier(model_name=model_name, pretrained=True).to(device)
     logging.info(model)
 
     # some fn
@@ -199,6 +200,7 @@ if __name__ == '__main__':
 
     train(train_dataloader=train_dataloader,
           eval_dataloader=eval_dataloader,
+          model_name='resnet50',
           save_path=save_path.as_posix(),
           epochs=epochs,
           device=device)

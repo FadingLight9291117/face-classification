@@ -5,6 +5,9 @@ opencv-python
 Pillow
 PyYAML
 scikit-learn
-torch
+torch+cu111
 torchaudio
-torchvision
+torchvision+cu111
+PyYAML
+easydict
+scikit-learn    
