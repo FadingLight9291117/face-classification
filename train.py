@@ -157,16 +157,16 @@ if __name__ == '__main__':
     config_path = opt.config_path
     config = get_config(config_path)
 
-    (train_dir, test_dir, P, N, save_path, img_size,
+    (train_dir, eval_dir, P, N, save_path, img_size,
      epochs, batch_size, num_workers, device, debug, model_name) = \
-        (config.train_dir, config.test_dir, config.P, config.N, config.save_path, config.img_size,
+        (config.train_dir, config.eval_dir, config.P, config.N, config.save_path, config.img_size,
          config.epochs, config.batch_size, config.num_workers, config.device, config.DEBUG, config.model_name)
 
     # data path
     train_p = Path(train_dir).joinpath(P).as_posix()
     train_n = Path(train_dir).joinpath(N).as_posix()
-    test_p = Path(test_dir).joinpath(P).as_posix()
-    test_n = Path(test_dir).joinpath(N).as_posix()
+    eval_p = Path(eval_dir).joinpath(P).as_posix()
+    eval_n = Path(eval_dir).joinpath(N).as_posix()
     save_path = Path(save_path)
     save_path.mkdir(exist_ok=True)
     device = 'cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu'
@@ -188,12 +188,12 @@ if __name__ == '__main__':
     # transforms.ToTensor(),
     # ])
 
-    eval_dataset = ImageDataDataset(imgP_dir=train_p, imgN_dir=train_n,
-                                    transform=transform, target_transform=target_transform)
-    eval_dataset = ImageDataDataset(imgP_dir=test_p, imgN_dir=test_n,
+    train_dataset = ImageDataDataset(imgP_dir=train_p, imgN_dir=train_n,
+                                     transform=transform, target_transform=target_transform)
+    eval_dataset = ImageDataDataset(imgP_dir=eval_p, imgN_dir=eval_n,
                                     transform=transform, target_transform=target_transform)
 
-    train_dataloader = DataLoader(eval_dataset, batch_size=batch_size,
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size,
                                   shuffle=True, num_workers=num_workers)
     eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size,
                                  shuffle=True, num_workers=num_workers)

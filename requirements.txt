@@ -11,3 +11,4 @@ torchvision+cu111
 PyYAML
 easydict
 scikit-learn    
+tqdm

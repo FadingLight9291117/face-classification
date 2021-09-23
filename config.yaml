@@ -1,14 +1,18 @@
 train_dir: dataset/train
+eval_dir: dataset/eval
 test_dir: dataset/test
 P: p
 N: n
 save_path: result
 
-img_size: [ 300, 300 ]
+img_size: [300, 300]
 epochs: 500
 batch_size: 64
 num_workers: 8
 device: gpu
 
-model_name: 'mobilnet'
+model_name: mobilnet   # resnet50 or mobilnet
 DEBUG: true
+
+# test
+model_path: result/mobilnet2/models/model_20.pth
