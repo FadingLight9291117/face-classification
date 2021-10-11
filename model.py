@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet50
@@ -5,7 +6,7 @@ from torchvision.models.mobilenetv2 import mobilenet_v2
 
 
 class FaceClassifier(nn.Module):
-    def __init__(self, model_name='resnet50', pretrained=True):
+    def __init__(self, model_name='mobilnet', pretrained=True):
         super().__init__()
         if model_name == 'resnet50':
             self.backbone = resnet50(pretrained=pretrained)
@@ -25,4 +26,4 @@ class FaceClassifier(nn.Module):
 
 if __name__ == '__main__':
     model = FaceClassifier(model_name='mobilnet')
-    print(model)
+    torch.save(model, "faceCla.net")
