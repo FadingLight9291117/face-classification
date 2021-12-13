@@ -3,7 +3,7 @@ eval_dir: dataset/eval
 test_dir: dataset/test
 P: p
 N: n
-save_path: result
+save_path: result2
 
 img_size: [300, 300]
 epochs: 500
@@ -15,4 +15,4 @@ model_name: mobilnet   # resnet50 or mobilnet
 DEBUG: true
 
 # test
-model_path: result/mobilnet2/models/model_20.pth
+model_path: result/models/model_30.pth

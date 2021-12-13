@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
+from torch.utils.tensorboard import SummaryWriter
 from easydict import EasyDict as edict
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 
@@ -37,7 +38,8 @@ def train(train_dataloader,
           model_name,
           save_path,
           epochs,
-          device):
+          device,
+          tb_writer):
     # result save path
     save_path = Path(save_path)
     model_save_dir = save_path / 'models'
@@ -52,6 +54,8 @@ def train(train_dataloader,
     optimizer = optim.Adam(model.parameters())
 
     # start train ==============================================================
+    iter_num = 0
+    eval_num = 0
     for epoch in range(epochs):
         model.train()
         for batch, (images, targs) in enumerate(train_dataloader):
@@ -72,10 +76,20 @@ def train(train_dataloader,
             train_log = {
                 'epochs': f'{epoch:>3}/{epochs - 1}',
                 'step': f'{batch:>3}/{len(train_dataloader) - 1}',
-                'loss': f'{loss:>7f}',
+                'loss': float(f'{loss:>7f}'),
                 'metrics': metrics,
             }
             logging.info(f'train: {train_log}')
+
+            tb_writer.add_scalar(
+                'train_loss', train_log['loss'], iter_num, walltime=None)
+            tb_writer.add_scalar(
+                'train_acc', train_log['metrics']['acc'], iter_num, walltime=None)
+            tb_writer.add_scalar(
+                'train_prec', train_log['metrics']['prec'], iter_num, walltime=None)
+            tb_writer.add_scalar(
+                'train_recall', train_log['metrics']['recall'], iter_num, walltime=None)
+            iter_num += 1
 
         # eval begin ====================================================
         if epoch % 10 == 0:
@@ -87,15 +101,23 @@ def train(train_dataloader,
             info = eval(eval_dataloader, model, device)
             eval_log.update(info)
             logging.info(f' eval: {eval_log}')
+
+            tb_writer.add_scalar(
+                'eval_acc', eval_log['metrics']['acc'], iter_num, walltime=None)
+            tb_writer.add_scalar(
+                'eval_prec', eval_log['metrics']['prec'], iter_num, walltime=None)
+            tb_writer.add_scalar(
+                'eval_recall', eval_log['metrics']['recall'], iter_num, walltime=None)
+
             # save model
             torch.save(model.state_dict(),
-                       (model_save_dir / f'model_{epoch}.pth').as_posix())
+                       (model_save_dir / f'{model_name}_{epoch}.pth').as_posix())
         # eval end ======================================================
     # train end ====================================================================
 
     # save final model
     torch.save(model.state_dict(),
-               (model_save_dir / 'model_FINAL.pth').as_posix())
+               (model_save_dir / f'{model_name}_FINAL.pth').as_posix())
 
 
 @torch.no_grad()
@@ -162,6 +184,8 @@ if __name__ == '__main__':
         (config.train_dir, config.eval_dir, config.P, config.N, config.save_path, config.img_size,
          config.epochs, config.batch_size, config.num_workers, config.device, config.DEBUG, config.model_name)
 
+    tb_writer = SummaryWriter(f'./{save_path}/log')
+
     # data path
     train_p = Path(train_dir).joinpath(P).as_posix()
     train_n = Path(train_dir).joinpath(N).as_posix()
@@ -171,7 +195,7 @@ if __name__ == '__main__':
     save_path.mkdir(exist_ok=True)
     device = 'cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu'
 
-    # set logging
+    # set loggingpiop
     log_path = save_path / 'log.log'
     logging.basicConfig(level=logging.INFO,
                         filename=log_path.as_posix(),
@@ -203,4 +227,5 @@ if __name__ == '__main__':
           model_name=model_name,
           save_path=save_path.as_posix(),
           epochs=epochs,
-          device=device)
+          device=device,
+          tb_writer=tb_writer)

@@ -26,4 +26,4 @@ class FaceClassifier(nn.Module):
 
 if __name__ == '__main__':
     model = FaceClassifier(model_name='mobilnet')
-    torch.save(model, "faceCla.net")
+    torch.save(model, "faceCls.net")

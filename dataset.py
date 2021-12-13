@@ -11,7 +11,7 @@ class ImageDataDataset(Dataset):
         imgNs = list(Path(imgN_dir).glob('*'))
         self.imgPaths = imgPs + imgNs
         self.label = torch.cat(
-            (torch.zeros(len(imgPs)), torch.ones(len(imgNs))))
+            (torch.ones(len(imgPs)), torch.zeros(len(imgNs))))
 
         self.transform = transform
         self.target_transform = target_transform
@@ -26,5 +26,5 @@ class ImageDataDataset(Dataset):
         if self.transform:
             image = self.transform(image)
         if self.target_transform:
-            label = self.target_transform
+            label = self.target_transform(label)
         return image, label
